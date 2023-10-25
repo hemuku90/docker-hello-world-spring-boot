@@ -1,59 +1,45 @@
-node {
-    // reference to maven
-    // ** NOTE: This 'maven-3.6.1' Maven tool must be configured in the Jenkins Global Configuration.   
-    def mvnHome = tool 'maven-3.8.5'
-
-    // holds reference to docker image
-    def dockerImage
-    // ip address of the docker private repository(nexus)
+pipeline {
+    agent {any}
     
-    def dockerRepoUrl = "localhost:8083"
-    def dockerImageName = "hello-world-java"
-    def dockerImageTag = "${dockerRepoUrl}/${dockerImageName}:${env.BUILD_NUMBER}"
-    
-    stage('Clone Repo') { // for display purposes
-      // Get some code from a GitHub repository
-      git 'https://github.com/dstar55/docker-hello-world-spring-boot.git'
-      // Get the Maven tool.
-      // ** NOTE: This 'maven-3.6.1' Maven tool must be configured
-      // **       in the global configuration.           
-      mvnHome = tool 'maven-3.8.5'
-    }    
-  
-    stage('Build Project') {
-      // build project via maven
-      sh "'${mvnHome}/bin/mvn' -Dmaven.test.failure.ignore clean package"
-    }
-	
-	stage('Publish Tests Results'){
-      parallel(
-        publishJunitTestsResultsToJenkins: {
-          echo "Publish junit Tests Results"
-		  junit '**/target/surefire-reports/TEST-*.xml'
-		  archive 'target/*.jar'
-        },
-        publishJunitTestsResultsToSonar: {
-          echo "This is branch b"
-      })
-    }
-		
-    stage('Build Docker Image') {
-      // build docker image
-      sh "whoami"
-      //sh "ls -all /var/run/docker.sock"
-      sh "mv ./target/hello*.jar ./data" 
-      
-      dockerImage = docker.build("hello-world-java")
-    }
-   
-    stage('Deploy Docker Image'){
-      
-      // deploy docker image to nexus
-
-      echo "Docker Image Tag Name: ${dockerImageTag}"
-
-      sh "docker login -u admin -p admin123 ${dockerRepoUrl}"
-      sh "docker tag ${dockerImageName} ${dockerImageTag}"
-      sh "docker push ${dockerImageTag}"
+    stages {       
+        stage ('Docker_Build') {
+            steps {
+                \\ Build the docker image
+                sh'''
+                    # Build the image
+                    COMMIT_ID=$(git rev-parse --short HEAD)
+                    echo 'Building the docker image with commit ID: '
+                    docker build -t "sample-ap:${COMMIT_ID}" .
+                '''
+            }
+        }
     }
 }
+        
+        // stage ('Deploy_K8S') {
+        //      steps {
+        //              withCredentials([string(credentialsId: "jenkins-argocd-deploy", variable: 'ARGOCD_AUTH_TOKEN')]) {
+        //                 sh '''
+        //                 ARGOCD_SERVER="argocd-prod.example.com"
+        //                 APP_NAME="debian-test-k8s"
+        //                 CONTAINER="k8s-debian-test"
+        //                 REGION="eu-west-1"
+        //                 AWS_ACCOUNT="$ACCOUNT_NUMBER"
+        //                 AWS_ENVIRONMENT="staging"
+
+        //                 $(aws ecr get-login --region $REGION --profile $AWS_ENVIRONMENT --no-include-email)
+                        
+        //                 # Deploy image to ECR
+        //                 docker tag $CONTAINER:latest $AWS_ACCOUNT.dkr.ecr.$REGION.amazonaws.com\$CONTAINER:latest
+        //                 docker push $AWS_ACCOUNT.dkr.ecr.$REGION.amazonaws.com\$CONTAINER:latest
+        //                 IMAGE_DIGEST=$(docker image inspect $AWS_ACCOUNT.dkr.ecr.$REGION.amazonaws.com\$CONTAINER:latest -f '{{join .RepoDigests ","}}')
+        //                 # Customize image 
+        //                 ARGOCD_SERVER=$ARGOCD_SERVER argocd --grpc-web app set $APP_NAME --kustomize-image $IMAGE_DIGEST
+                        
+        //                 # Deploy to ArgoCD
+        //                 ARGOCD_SERVER=$ARGOCD_SERVER argocd --grpc-web app sync $APP_NAME --force
+        //                 ARGOCD_SERVER=$ARGOCD_SERVER argocd --grpc-web app wait $APP_NAME --timeout 600
+        //                 '''
+        //        }
+        //     }
+        // }
