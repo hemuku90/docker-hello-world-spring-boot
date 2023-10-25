@@ -4,7 +4,6 @@ pipeline {
     stages {       
         stage ('Docker_Build') {
             steps {
-                \\ Build the docker image
                 sh'''
                     # Build the image
                     COMMIT_ID=$(git rev-parse --short HEAD)
