@@ -19,8 +19,8 @@ pipeline {
              steps {
                      withCredentials([string(credentialsId: "argocd-token", variable: 'ARGOCD_AUTH_TOKEN')]) {
                         sh '''
-                        ARGOCD_SERVER="argocd"
-                        APP_NAME=""
+                        ARGOCD_SERVER="10.101.162.177"
+                        APP_NAME="argo-spring-boot-dev"
                         CONTAINER="k8s-debian-test"
                         COMMIT_ID=$(git rev-parse --short HEAD)
                         echo 'Building the docker image with commit ID: '
